@@ -1,0 +1,191 @@
+{
+ "source": "Originalvideos/261003_SCRJ_SCB_INTERVIEWS_DE.mp4",
+ "crop_x": 600,
+ "xfade": 0.4,
+ "fade_out": 0.1,
+ "tail": 0.7,
+ "segments": [
+  [
+   5.85,
+   42.3
+  ]
+ ],
+ "tag": "Dominic Lammer, SCRJ Lakers",
+ "cues": [
+  {
+   "id": "q0",
+   "src_s": 5.97,
+   "src_e": 10.8,
+   "text": "Dominic Lammer, herzliche Gratulation. Sie haben sich hier gerade reichlich beschenkt.",
+   "s": 0.12,
+   "e": 4.95,
+   "word_t": [
+    0.54,
+    0.98,
+    1.48,
+    2.12,
+    2.58,
+    2.86,
+    3.16,
+    3.44,
+    3.78,
+    4.24,
+    4.65
+   ]
+  },
+  {
+   "id": "a1",
+   "src_s": 11.0,
+   "src_e": 12.4,
+   "text": "Erst mal danke vielmals.",
+   "s": 5.15,
+   "e": 6.55,
+   "word_t": [
+    5.49,
+    5.73,
+    6.01,
+    6.25
+   ]
+  },
+  {
+   "id": "a2",
+   "src_s": 12.5,
+   "src_e": 17.3,
+   "text": "Es ist immer schön, am Geburtstag der Mannschaft zu helfen.",
+   "s": 6.65,
+   "e": 11.45,
+   "word_t": [
+    6.97,
+    7.25,
+    7.65,
+    8.17,
+    8.57,
+    9.13,
+    9.73,
+    10.33,
+    10.89,
+    11.15
+   ]
+  },
+  {
+   "id": "q1",
+   "src_s": 17.5,
+   "src_e": 21.8,
+   "text": "Ist es das, was man sich vorstellt, wenn man am Geburtstag aufwacht?",
+   "s": 11.65,
+   "e": 15.95,
+   "word_t": [
+    11.97,
+    12.19,
+    12.43,
+    12.71,
+    12.97,
+    13.25,
+    13.75,
+    14.23,
+    14.51,
+    14.73,
+    15.17,
+    15.65
+   ]
+  },
+  {
+   "id": "q2",
+   "src_s": 22.0,
+   "src_e": 25.4,
+   "text": "«Heute wäre es schön, ein Goal zu machen – vielleicht sogar drei»?",
+   "s": 16.15,
+   "e": 19.55,
+   "word_t": [
+    16.51,
+    16.81,
+    17.03,
+    17.27,
+    17.55,
+    17.77,
+    17.97,
+    18.23,
+    18.45,
+    18.79,
+    19.21,
+    19.25
+   ]
+  },
+  {
+   "id": "a3",
+   "src_s": 25.5,
+   "src_e": 29.5,
+   "text": "Ja, das ist immer schön.",
+   "s": 19.65,
+   "e": 23.65,
+   "word_t": [
+    20.87,
+    21.37,
+    21.99,
+    22.59,
+    23.35
+   ]
+  },
+  {
+   "id": "a4",
+   "src_s": 30.0,
+   "src_e": 33.6,
+   "text": "Ich glaube, es ist schön, dass ich dem Team helfen konnte.",
+   "s": 24.15,
+   "e": 27.75,
+   "word_t": [
+    24.89,
+    25.23,
+    25.47,
+    25.63,
+    25.95,
+    26.25,
+    26.45,
+    26.63,
+    26.91,
+    27.35,
+    27.45
+   ]
+  },
+  {
+   "id": "a5",
+   "src_s": 33.86,
+   "src_e": 39.4,
+   "text": "Schlussendlich war es nach diesem Saisonstart sicher wichtig, dass wir zwei Punkte holen konnten.",
+   "s": 28.01,
+   "e": 33.55,
+   "word_t": [
+    28.59,
+    29.01,
+    29.27,
+    29.45,
+    29.89,
+    30.41,
+    30.89,
+    31.33,
+    31.73,
+    32.09,
+    32.31,
+    32.65,
+    32.95,
+    33.25
+   ]
+  },
+  {
+   "id": "a6",
+   "src_s": 39.5,
+   "src_e": 41.98,
+   "text": "Wir hätten gerne drei gehabt.",
+   "s": 33.65,
+   "e": 36.13,
+   "word_t": [
+    34.01,
+    34.39,
+    34.99,
+    35.49,
+    35.83
+   ]
+  }
+ ],
+ "allow_over_30": true
+}
