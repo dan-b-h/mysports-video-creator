@@ -15,7 +15,12 @@ Vorlagen von Brain & Heart, mit denen Hockey-Reels für mySports im freigegebene
 - `beispiele/` – freigegebene Specs als Vorlage
 
 ## Was nicht hier liegt
-Videos, Logo, Schriften, Kader- und Protokolldaten liegen im internen Google Drive (Projektordner «mySports - Video Creator»). Das Notebook verbindet beides.
+Videos, Logo, Schriften, Kader- und Protokolldaten liegen im internen Google Drive (Projektordner «mySports - SOM Organic - Video Creator»). Das Notebook verbindet beides.
+
+## Einmalig einrichten
+Damit Colab den Projektordner findet, braucht jede Person eine Verknüpfung in «Meine Ablage»:
+im Google Drive den Ordner «mySports - SOM Organic - Video Creator» öffnen, oben auf den Ordnernamen klicken,
+«Organisieren» → «Verknüpfung hinzufügen» → «Meine Ablage» wählen.
 
 ## Ablauf in Kürze
 1. Notebook über den Button oben öffnen, Schritt 1 ausführen (Drive verbinden).
