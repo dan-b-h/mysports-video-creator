@@ -3,13 +3,13 @@ Die aktive Hälfte läuft, die andere zeigt ein abgedunkeltes Standbild (vorheri
 Spielstand in einer Zeile auf der Trennlinie: Heimteam | Score | Auswärtsteam.
 Aufruf: python3 06_Vorlage/render_goals_split.py spec.json ausgabe.mp4
 spec: source, headline [..], home, away, segments [{start,end,score,crop_x_rel,sub?}]
-      optional: headline_font (Datei in 03_Brand), seam_color (ffmpeg-Farbe), seam_height (px)"""
+      Gestaltung: siehe brand_text.py (Titelblock, Scorebar, Torschütze, Trennlinie)"""
 import sys, json, subprocess, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from PIL import Image, ImageDraw, ImageFont
-from brand_text import bold, draw_lines, FONT_NAME, FONT_SUB, RED, RED_SOLID, WHITE, SIDE, W, H, GAP, RADIUS, PADX
-LOGO_SHIFT, HALF = 200, 960
-CW, CH, CY = 1012, 900, 175          # Ausschnitt aus 1920x1080 (ohne Einblendung oben), Seitenverhältnis 1080:960
+from brand_text import titelblock, scorebar, torschuetze, torschuetze_y, CLIP_H, LINE_H, LINE_Y
+LOGO_SHIFT, HALF = 200, CLIP_H
+ENC_H, H_OUT = CLIP_H + 1, 1920   # zwei Clips je 1080x957 + Trennlinie 6 px; gerendert mit 958 px (gerade Höhe), die Linie deckt den Überstand ab
+CW, CH, CY = 1016, 900, 175          # Ausschnitt aus 1920x1080 (ohne Einblendung oben), Seitenverhältnis 1080:957
 spec_path, out = sys.argv[1], sys.argv[2]
 spec = json.load(open(spec_path, encoding='utf-8'))
 FPS = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', spec['source']], capture_output=True, text=True).stdout.strip() or '25'
@@ -25,36 +25,11 @@ pngdir = os.path.splitext(spec_path)[0] + '_png'; os.makedirs(pngdir, exist_ok=T
 def save(img, name):
     p = f'{pngdir}/{name}.png'; img.save(p); return p
 
-def scorer_label(text, y):
-    fs = ImageFont.truetype(FONT_SUB, 48); bh = int(48 * 1.3); sw = int(fs.getlength(text)) + 2 * PADX
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
-    sx = (W - sw) // 2
-    d.rounded_rectangle([sx, y, sx + sw, y + bh], radius=RADIUS, fill=RED)
-    a_, de = fs.getmetrics(); d.text((sx + PADX, y + (bh - (a_ + de)) // 2), text, font=fs, fill=WHITE, **bold(fs))
-    return img
-
-def score_line(home, score, away):
-    """Heimteam | Score | Auswärtsteam in einer Zeile, zentriert auf der Trennlinie; darunter Minute + Torschütze."""
-    ft, fb = ImageFont.truetype(FONT_SUB, 52), ImageFont.truetype(FONT_NAME, 84)
-    boxh = int(84 * 1.25)
-    parts = [(home, ft, RED, WHITE), (score, fb, WHITE, RED_SOLID), (away, ft, RED, WHITE)]
-    widths = [int(f.getlength(t)) + 2 * PADX + (8 if f is fb else 0) for t, f, _, _ in parts]
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
-    x = (W - widths[1]) // 2 - GAP - widths[0]; y = HALF - boxh // 2   # Score-Feld immer exakt in der Bildmitte
-    for (t, f, bg, fg), w in zip(parts, widths):
-        d.rounded_rectangle([x, y, x + w, y + boxh], radius=RADIUS, fill=bg)
-        tw = int(f.getlength(t)); a_, de = f.getmetrics()
-        d.text((x + (w - tw) // 2, y + (boxh - (a_ + de)) // 2), t, font=f, fill=fg, **bold(f))
-        x += w + GAP
-    return img
-
-head = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-HEAD_FONT = os.path.join(os.path.dirname(FONT_SUB), spec.get('headline_font', 'Figtree-Bold.ttf'))   # z. B. Figtree-SemiBold.ttf
-draw_lines(head, spec['headline'], ImageFont.truetype(HEAD_FONT, 60), SIDE, 250, int(60 * 1.3), RED, WHITE)
+head = titelblock(spec.get('headline', []))   # [Kicker, Titel] ab x 125 / y 252
 def run(args): subprocess.run(['ffmpeg', '-v', 'error', '-y'] + args, check=True)
 def crop(i):
     r = segs[i].get('crop_x_rel', 0.5)
-    return f"crop={CW}:{CH}:(iw-{CW})*{r}:{CY},scale=1080:{HALF},setsar=1"
+    return f"crop={CW}:{CH}:(iw-{CW})*{r}:{CY},scale=1080:{ENC_H},setsar=1"
 ENC = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '17', '-pix_fmt', 'yuv420p', '-r', FPS]
 clips = []
 for i, s in enumerate(segs):   # 1) Spielclips pro Tor, 2) Standbilder (erstes / letztes Bild)
@@ -67,7 +42,7 @@ def hold(img, dur, name, mode):
     """Standbild: 'end' = Szene friert ein und dunkelt weich ab; 'next' = wartet abgedunkelt und hellt am Ende auf."""
     o = f'{pngdir}/{name}.mp4'
     fade = 'fade=t=in:st=0:d=0.5:alpha=1' if mode == 'end' else f'fade=t=out:st={dur-0.35:.3f}:d=0.35:alpha=1'
-    run(['-loop', '1', '-t', f'{dur:.3f}', '-i', img, '-f', 'lavfi', '-i', f'color=black:s=1080x{HALF}:r={FPS}:d={dur:.3f}',
+    run(['-loop', '1', '-t', f'{dur:.3f}', '-i', img, '-f', 'lavfi', '-i', f'color=black:s=1080x{ENC_H}:r={FPS}:d={dur:.3f}',
          '-filter_complex', f'[1]format=rgba,colorchannelmixer=aa={DIM},{fade}[k];[0][k]overlay=shortest=1,format=yuv420p'] + ENC + [o])
     return o
 top, bot = [], []
@@ -81,10 +56,9 @@ def cat(lst, name):
     open(lf, 'w').write(''.join(f"file '{os.path.abspath(x)}'\n" for x in lst))
     run(['-f', 'concat', '-safe', '0', '-i', lf, '-c', 'copy', o]); return o
 tv, bv = cat(top, 'top'), cat(bot, 'bottom')
-SEAM_COLOR = spec.get('seam_color', 'white@0.9')   # Trennlinie, z. B. '0xDA291C'
-SEAM_H = spec.get('seam_height', 4)
 inputs = ['-i', tv, '-i', bv, '-i', spec['source'], '-i', '03_Brand/mySports.png', '-i', save(head, 'headline')]
-f = ['[0:v][1:v]vstack=inputs=2[stk]', f"[stk]drawbox=x=0:y={HALF - SEAM_H // 2}:w=1080:h={SEAM_H}:color={SEAM_COLOR}:t=fill[stk2]"]
+f = [f'[0:v]pad=1080:{H_OUT - ENC_H}:0:0:color=0xDA291C[toppad]', '[toppad][1:v]vstack=inputs=2[stk]',
+     f'[stk]drawbox=x=0:y={LINE_Y}:w=1080:h={LINE_H}:color=0xDA291C:t=fill[stk2]']   # sichtbar: Clip 0–957, Linie 957–963, Clip 963–1920
 for i, s in enumerate(segs):
     f.append(f"[2:a]atrim={s['start']}:{s['end']},asetpts=PTS-STARTPTS,afade=t=in:d=0.12,afade=t=out:st={L[i]-0.15:.3f}:d=0.15[a{i}]")
 f.append(f'anullsrc=r=48000:cl=stereo,atrim=duration={max(INTRO,0.01):.3f}[a_in]')
@@ -93,7 +67,7 @@ f.append(f'[stk2][3:v]overlay=0:{LOGO_SHIFT}[b1]'); HEAD_DUR = spec.get('headlin
 f.append(f"[b1][4:v]overlay=0:0:enable='lt(t,{HEAD_DUR:.2f})'[b2]")
 last, k, t0 = 'b2', 5, INTRO
 SUB_LEAD = 1.0   # Torschütze erscheint 1 s vor dem Tor
-LABEL_Y = HALF + int(84 * 1.25) // 2 + 50   # Torschütze immer 50 px unter dem Spielstand
+LABEL_Y = torschuetze_y()   # Torschütze 10 px unter der Scorebar
 def ov(img_path, a, b):
     global last, k
     inputs.extend(['-i', img_path])
@@ -102,10 +76,10 @@ for i, s in enumerate(segs):
     t1 = t0 + L[i]
     tg = t0 + (s['goal_at'] - s['start']) if 'goal_at' in s else t0
     if tg > t0:   # vor dem Tor: bisheriger Spielstand
-        ov(save(score_line(spec['home'], s['prev_score'], spec['away']), f'prev{i}'), t0, tg)
-    ov(save(score_line(spec['home'], s['score'], spec['away']), f'score{i}'), tg, t1)
+        ov(save(scorebar(spec['home'], s['prev_score'], spec['away']), f'prev{i}'), t0, tg)
+    ov(save(scorebar(spec['home'], s['score'], spec['away']), f'score{i}'), tg, t1)
     if s.get('sub'):
-        ov(save(scorer_label(s['sub'], LABEL_Y), f'sub{i}'), max(t0, tg - SUB_LEAD), t1)
+        ov(save(torschuetze(s['sub'], LABEL_Y), f'sub{i}'), max(t0, tg - SUB_LEAD), t1)
     t0 = t1
 fs = os.path.splitext(spec_path)[0] + '_filter.txt'; open(fs, 'w').write(';'.join(f))
 cmd = ['ffmpeg', '-v', 'error', '-y'] + inputs + ['-filter_complex_script', fs, '-map', f'[{last}]', '-map', '[aout]',

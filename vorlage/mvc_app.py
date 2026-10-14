@@ -50,8 +50,8 @@ def specs():
                   if not p.endswith('_torliste.json'))
 
 
-def rahmen_tor(r, b=640):      # Ausschnitt wie render_goals_split.py (1012x900 ab y=175 in 1920x1080)
-    f = b / 1920; cw = 1012 * f; x = r * (b - cw)
+def rahmen_tor(r, b=640):      # Ausschnitt wie render_goals_split.py (1016x900 ab y=175 in 1920x1080)
+    f = b / 1920; cw = 1016 * f; x = r * (b - cw)
     return [x, 175 * f, x + cw, 175 * f + 900 * f]
 
 

@@ -2,7 +2,7 @@
 Aufruf: python3 06_Vorlage/render_interview.py spec.json ausgabe.mp4"""
 import sys, json, subprocess, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from brand_text import subtitle_states, name_tag, layout
+from brand_text import untertitel_zustaende, bauchbinde, name_club, verlauf_unten
 XF = 0.5          # Überblendung zwischen Interviewteilen (s)
 LOGO_SHIFT = 200  # Logo-PNG liegt bei y 1534-1609, verschoben auf 1734-1809
 spec_path, out = sys.argv[1], sys.argv[2]
@@ -20,9 +20,10 @@ for L in lens: starts.append(acc); acc += L
 def shift(t):  # Zeit ohne Überblendung -> Zeit mit Überblendung
     k = max(i for i, s in enumerate(starts) if t >= s - 1e-6)
     return round(t - k * XF, 3)
-SUB_TOP, NAME_TOP = layout([c['text'] for c in spec['cues']])
-name_tag(spec['tag'], NAME_TOP).save(f'{pngdir}/tag.png')
-inputs = ['-i', spec['source'], '-i', '03_Brand/mySports.png', '-i', f'{pngdir}/tag.png']
+NAME, CLUB = name_club(spec.get('tag'), spec.get('name'), spec.get('club'))
+bauchbinde(NAME, CLUB).save(f'{pngdir}/tag.png')          # PSD: ab x 86 / y 952
+verlauf_unten().save(f'{pngdir}/verlauf.png')
+inputs = ['-i', spec['source'], '-i', '03_Brand/mySports.png', '-i', f'{pngdir}/tag.png', '-i', f'{pngdir}/verlauf.png']
 f = []
 for i, (s, e) in enumerate(segs):
     if spec.get('video_h'):   # herausgezoomt: Bild oben (Höhe video_h), unten unscharf verlängert -> Gesicht weiter weg vom Text
@@ -48,14 +49,14 @@ f.append(f'[{la}]afade=t=in:d=0.04,afade=t=out:st={total-FO:.3f}:d={FO},apad=pad
 if TAIL:
     f.append(f'[{lv}]tpad=stop_mode=clone:stop_duration={TAIL}[vtail]'); lv = 'vtail'
 total_out = total + TAIL
-f.append(f'[{lv}][1:v]overlay=0:{LOGO_SHIFT}[b1]'); f.append('[b1][2:v]overlay=0:0[b2]')
-last, k = 'b2', 3
+f.append(f'[{lv}][3:v]overlay=0:0[b0]'); f.append(f'[b0][1:v]overlay=0:{LOGO_SHIFT}[b1]'); f.append('[b1][2:v]overlay=0:0[b2]')
+last, k = 'b2', 4
 MIN_FULL = 0.9   # ganzer Satz mind. so lange vollständig sichtbar (s)
 HOLD = 0.6       # Untertitel bleibt nach Sprechende noch stehen, bis der nächste beginnt
 cues = spec['cues']
 report = []
 for i, c in enumerate(cues):
-    states = subtitle_states(c['text'], SUB_TOP)
+    states = untertitel_zustaende(c['text'])   # PSD: ab x 86 / y 1176, schwarz, max. 3 Zeilen
     wt = [shift(t) for t in c['word_t']][:len(states)]
     end = shift(c['e'])
     nxt = shift(cues[i + 1]['s']) if i + 1 < len(cues) else total + TAIL
@@ -66,14 +67,15 @@ for i, c in enumerate(cues):
         wt = [t0 + (t - t0) * (tgt - t0) / (wt[-1] - t0) for t in wt]
     report.append(f"{c['id']}: {len(states)} Woerter, voll sichtbar {end - wt[-1]:.1f} s")
     for j, img in enumerate(states):
-        p = f"{pngdir}/{c['id']}_{j:02d}.png"; img.save(p)
+        bb = img.getbbox()   # nur den Untertitel-Bereich überlagern (viel schneller als ganze 1080x1920-Bilder)
+        p = f"{pngdir}/{c['id']}_{j:02d}.png"; img.crop(bb).save(p)
         t0 = wt[j]; t1 = wt[j + 1] if j + 1 < len(states) else end
         inputs += ['-i', p]
-        f.append(f"[{last}][{k}:v]overlay=0:0:enable='between(t,{t0},{t1-0.001:.3f})'[c{k}]"); last = f'c{k}'; k += 1
+        f.append(f"[{last}][{k}:v]overlay={bb[0]}:{bb[1]}:enable='between(t,{t0},{t1-0.001:.3f})'[c{k}]"); last = f'c{k}'; k += 1
 fs = os.path.splitext(spec_path)[0] + '_filter.txt'
 open(fs, 'w').write(';'.join(f))
 cmd = ['ffmpeg', '-v', 'error', '-y'] + inputs + ['-filter_complex_script', fs, '-map', f'[{last}]', '-map', '[aout]',
        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '19', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k',
-       '-movflags', '+faststart', out]
+       '-t', f'{total_out:.3f}', '-movflags', '+faststart', out]
 print('\n'.join(report))
 subprocess.run(cmd, check=True); print(f'ok {out} ({total_out:.1f} s, Quelle {sum(lens):.2f} s)')

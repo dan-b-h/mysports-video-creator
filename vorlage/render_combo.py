@@ -6,12 +6,12 @@ spec: goals{source, home, away, segments[{start,end,goal_at,prev_score,score,sub
       headline [..], seam_color"""
 import sys, json, subprocess, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from PIL import Image, ImageDraw, ImageFont
 import brand_text as BT
-from brand_text import (bold, draw_lines, subtitle_states, name_tag, layout, FONT_NAME, FONT_SUB,
-                        RED, RED_SOLID, WHITE, SIDE, W, H, GAP, RADIUS, PADX)
-LOGO_SHIFT, HALF = 200, 960
-CW, CH, CY = 1012, 900, 175
+from brand_text import (titelblock, scorebar, torschuetze, torschuetze_y, bauchbinde, name_club,
+                        untertitel_zustaende, CLIP_H, LINE_H, LINE_Y, SEAM_MID, KICKER_BOX, BLOCK_GAP, TITLE_BOX)
+LOGO_SHIFT, HALF = 200, CLIP_H
+ENC_H, H_OUT = CLIP_H + 1, 1920   # Video braucht gerade Höhen: Clips mit 958 px rendern, Trennlinie deckt den Überstand ab
+CW, CH, CY = 1016, 900, 175
 spec_path, out = sys.argv[1], sys.argv[2]
 spec = json.load(open(spec_path, encoding='utf-8'))
 G, I = spec['goals'], spec['interview']
@@ -30,43 +30,25 @@ def save(img, n): p = f'{pngdir}/{n}.png'; img.save(p); return p
 ENC = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '17', '-pix_fmt', 'yuv420p', '-r', FPS]
 DIM = 0.45
 
-def scorer_label(text, y):
-    fs = ImageFont.truetype(FONT_SUB, 48); bh = int(48 * 1.3); sw = int(fs.getlength(text)) + 2 * PADX
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(img); sx = (W - sw) // 2
-    d.rounded_rectangle([sx, y, sx + sw, y + bh], radius=RADIUS, fill=RED)
-    a_, de = fs.getmetrics(); d.text((sx + PADX, y + (bh - (a_ + de)) // 2), text, font=fs, fill=WHITE, **bold(fs))
-    return img
-def score_line(home, score, away):
-    ft, fb = ImageFont.truetype(FONT_SUB, 52), ImageFont.truetype(FONT_NAME, 84); boxh = int(84 * 1.25)
-    parts = [(home, ft, RED, WHITE), (score, fb, WHITE, RED_SOLID), (away, ft, RED, WHITE)]
-    widths = [int(f.getlength(t)) + 2 * PADX + (8 if f is fb else 0) for t, f, _, _ in parts]
-    img = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
-    x = (W - widths[1]) // 2 - GAP - widths[0]; y = HALF - boxh // 2
-    for (t, f, bg, fg), w in zip(parts, widths):
-        d.rounded_rectangle([x, y, x + w, y + boxh], radius=RADIUS, fill=bg)
-        tw = int(f.getlength(t)); a_, de = f.getmetrics()
-        d.text((x + (w - tw) // 2, y + (boxh - (a_ + de)) // 2), t, font=f, fill=fg, **bold(f)); x += w + GAP
-    return img
-
 # 1) Tore: Clips unten (1080x960)
 gclips = []
 for i, s in enumerate(gsegs):
     c = f'{pngdir}/goal{i}.mp4'
     run(['-ss', str(s['start']), '-t', str(GL[i]), '-i', G['source'], '-vf',
-         f"crop={CW}:{CH}:(iw-{CW})*{s.get('crop_x_rel', 0.5)}:{CY},scale=1080:{HALF},setsar=1", '-an'] + ENC + [c])
+         f"crop={CW}:{CH}:(iw-{CW})*{s.get('crop_x_rel', 0.5)}:{CY},scale=1080:{ENC_H},setsar=1", '-an'] + ENC + [c])
     gclips.append(c)
 # 2) Interview oben (1080x960): Ausschnitt 1215x1080 um face_x
-IW = 1216; ix = max(0, min(1920 - IW, I['face_x'] - IW // 2))
+IW = 1218; ix = max(0, min(1920 - IW, I['face_x'] - IW // 2))
 iclips = []
 for i, (s, e) in enumerate(isegs):
     c = f'{pngdir}/int{i}.mp4'
-    run(['-ss', str(s), '-t', str(e - s), '-i', I['source'], '-vf', f'crop={IW}:1080:{ix}:0,scale=1080:{HALF},setsar=1', '-an'] + ENC + [c])
+    run(['-ss', str(s), '-t', str(e - s), '-i', I['source'], '-vf', f'crop={IW}:1080:{ix}:0,scale=1080:{ENC_H},setsar=1', '-an'] + ENC + [c])
     iclips.append(c)
 run(['-i', iclips[0], '-frames:v', '1', f'{pngdir}/int_first.png'])
 def still(img, dur, name, fade):
     o = f'{pngdir}/{name}.mp4'
     fd = 'fade=t=in:st=0:d=0.5:alpha=1' if fade == 'in' else f'fade=t=out:st={dur-0.4:.3f}:d=0.4:alpha=1'
-    run(['-loop', '1', '-t', f'{dur:.3f}', '-i', img, '-f', 'lavfi', '-i', f'color=black:s=1080x{HALF}:r={FPS}:d={dur:.3f}',
+    run(['-loop', '1', '-t', f'{dur:.3f}', '-i', img, '-f', 'lavfi', '-i', f'color=black:s=1080x{ENC_H}:r={FPS}:d={dur:.3f}',
          '-filter_complex', f'[1]format=rgba,colorchannelmixer=aa={DIM},{fd}[k];[0][k]overlay=shortest=1,format=yuv420p'] + ENC + [o])
     return o
 def cat(lst, name):
@@ -79,7 +61,7 @@ if spec.get('bottom_phase2', 'still') == 'still':   # Standbild (letztes Torbild
     if spec.get('bottom_still_at'):   # bestimmtes Bild aus der Zusammenfassung (Quellzeit), z. B. Torjubel
         sx = spec.get('bottom_still_crop', 0.5)
         run(['-ss', str(spec['bottom_still_at']), '-i', G['source'], '-frames:v', '1', '-vf',
-             f"crop={CW}:{CH}:(iw-{CW})*{sx}:{CY},scale=1080:{HALF},setsar=1", f'{pngdir}/goal_last.png'])
+             f"crop={CW}:{CH}:(iw-{CW})*{sx}:{CY},scale=1080:{ENC_H},setsar=1", f'{pngdir}/goal_last.png'])
     else:
         run(['-sseof', '-0.5', '-i', gclips[-1], '-update', '1', f'{pngdir}/goal_last.png'])
     bot2 = still(f'{pngdir}/goal_last.png', T2, 'bot_hold', 'in')
@@ -89,16 +71,17 @@ else:                                                 # Tore stumm wiederholen
 bot = cat(gclips + [bot2], 'bottom')
 
 # 3) Zusammensetzen
-head = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-draw_lines(head, spec['headline'], ImageFont.truetype(FONT_SUB, 60), SIDE, 250, int(60 * 1.3), RED, WHITE)
-BT.SUB_BOTTOM = spec.get('sub_bottom', BT.SUB_BOTTOM)   # z. B. 920 = Untertitel oben, knapp über der Mittellinie
-SUB_TOP, NAME_TOP = layout([c['text'] for c in I['cues']])
-if spec.get('name_on_seam'):   # Namensfeld mittig auf der Trennlinie, Untertitel direkt darunter
-    nh = int(BT.NAME_SIZE * 1.3); NAME_TOP = HALF - nh // 2; SUB_TOP = NAME_TOP + nh + BT.NAME_GAP
+head = titelblock(spec.get('headline', []))
+NAME, CLUB = name_club(I.get('tag'), I.get('name'), I.get('club'))
+LOWER_Y, SUB_Y = BT.LOWER_Y, BT.SUB_Y               # Standard wie PSD (x 86 / y 952 bzw. 1176)
+if spec.get('name_on_seam'):   # rote Namensbox mittig auf der Trennlinie, Untertitel mit gleichem Abstand wie in der PSD darunter
+    name_y = SEAM_MID - TITLE_BOX // 2
+    LOWER_Y = name_y - (KICKER_BOX + BLOCK_GAP if CLUB else 0)
+    SUB_Y = name_y + TITLE_BOX + (BT.SUB_Y - (BT.LOWER_Y + KICKER_BOX + BLOCK_GAP + TITLE_BOX))
 inputs = ['-i', top, '-i', bot, '-i', G['source'], '-i', I['source'], '-i', '03_Brand/mySports.png',
-          '-i', save(head, 'headline'), '-i', save(name_tag(I['tag'], NAME_TOP), 'tag')]
-seam = spec.get('seam_color', '0xDA291C')
-f = ['[0:v][1:v]vstack=inputs=2[stk]', f'[stk]drawbox=x=0:y={HALF-2}:w=1080:h=4:color={seam}:t=fill[stk2]']
+          '-i', save(head, 'headline'), '-i', save(bauchbinde(NAME, CLUB, y=LOWER_Y), 'tag')]
+f = [f'[0:v]pad=1080:{H_OUT - ENC_H}:0:0:color=0xDA291C[toppad]', '[toppad][1:v]vstack=inputs=2[stk]',
+     f'[stk]drawbox=x=0:y={LINE_Y}:w=1080:h={LINE_H}:color=0xDA291C:t=fill[stk2]']   # sichtbar: Clip 0–957, Linie 957–963, Clip 963–1920
 for i, s in enumerate(gsegs):
     f.append(f"[2:a]atrim={s['start']}:{s['end']},asetpts=PTS-STARTPTS,afade=t=in:d=0.12,afade=t=out:st={GL[i]-0.15:.3f}:d=0.15[ga{i}]")
 for i, (s, e) in enumerate(isegs):
@@ -109,25 +92,25 @@ f.append(f'[stk2][4:v]overlay=0:{LOGO_SHIFT}[b1]')
 f.append(f"[b1][5:v]overlay=0:0:enable='lt(t,{spec.get('headline_dur', 2.5)})'[b2]")
 f.append(f"[b2][6:v]overlay=0:0:enable='gte(t,{T1:.3f})'[b3]")
 last, k = 'b3', 7
-def ov(p, a, b):
+def ov(p, a, b, xy=(0, 0)):
     global last, k
-    inputs.extend(['-i', p]); f.append(f"[{last}][{k}:v]overlay=0:0:enable='between(t,{a:.3f},{b-0.001:.3f})'[c{k}]"); last = f'c{k}'; k += 1
-LABEL_Y = HALF + int(84 * 1.25) // 2 + 50
+    inputs.extend(['-i', p]); f.append(f"[{last}][{k}:v]overlay={xy[0]}:{xy[1]}:enable='between(t,{a:.3f},{b-0.001:.3f})'[c{k}]"); last = f'c{k}'; k += 1
+LABEL_Y = torschuetze_y()
 t0 = 0.0
 for i, s in enumerate(gsegs):
     t1 = t0 + GL[i]; tg = t0 + s['goal_at'] - s['start']
-    ov(save(score_line(G['home'], s['prev_score'], G['away']), f'prev{i}'), t0, tg)
-    ov(save(score_line(G['home'], s['score'], G['away']), f'score{i}'), tg, t1)
-    ov(save(scorer_label(s['sub'], LABEL_Y), f'sub{i}'), max(t0, tg - 1.0), t1)
+    ov(save(scorebar(G['home'], s['prev_score'], G['away']), f'prev{i}'), t0, tg)
+    ov(save(scorebar(G['home'], s['score'], G['away']), f'score{i}'), tg, t1)
+    ov(save(torschuetze(s['sub'], LABEL_Y), f'sub{i}'), max(t0, tg - 1.0), t1)
     t0 = t1
 cues = I['cues']
 for i, c in enumerate(cues):
-    states = subtitle_states(c['text'], SUB_TOP); wt = [T1 + t for t in c['word_t']][:len(states)]
+    states = untertitel_zustaende(c['text'], y=SUB_Y); wt = [T1 + t for t in c['word_t']][:len(states)]
     end = T1 + (cues[i + 1]['s'] - 0.05 if i + 1 < len(cues) else T2)
     end = max(end, wt[-1] + 0.9)
     for j, img in enumerate(states):
         a = wt[j]; b = wt[j + 1] if j + 1 < len(states) else end
-        ov(save(img, f"{c['id']}_{j:02d}"), a, b)
+        bb = img.getbbox(); ov(save(img.crop(bb), f"{c['id']}_{j:02d}"), a, b, bb[:2])
 fs = os.path.splitext(spec_path)[0] + '_filter.txt'; open(fs, 'w').write(';'.join(f))
 subprocess.run(['ffmpeg', '-v', 'error', '-y'] + inputs + ['-filter_complex_script', fs, '-map', f'[{last}]', '-map', '[aout]',
                 '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '19', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k',
