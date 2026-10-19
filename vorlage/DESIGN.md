@@ -36,9 +36,9 @@ Ausnahme: mySports-Logo, unten zentriert, darf ausserhalb liegen.
   In der Spec: `"headline": ["Kicker", "Titel"]`. Kurz halten, beide Zeilen müssen in die Safe Zone passen.
 
 ## Interview
-- Bauchbinde ab x 86 / y 952: weisse Box Club (z. B. «HC Davos»), rote Box Vor- und Nachname. Während des ganzen Clips sichtbar.
+- Bauchbinde ab x 86 / y 1052 (Standard ab 19.10.2026, PSD-Wert 952 + 100 px): weisse Box Club (z. B. «HC Davos»), rote Box Vor- und Nachname. Während des ganzen Clips sichtbar.
   In der Spec: `"tag": "Vorname Nachname, Club"`. Bei langen Namen wird der Vorname abgekürzt.
-- Untertitel ab x 86 / y 1176: schwarze Boxen 100 %, je Zeile eine Box, 10 px Abstand, max. 3 Zeilen.
+- Untertitel ab x 86 / y 1276 (Standard ab 19.10.2026, PSD-Wert 1176 + 100 px): schwarze Boxen 100 %, je Zeile eine Box, 10 px Abstand, **max. 2 Zeilen** (Unterkante 1424; eine 3. Zeile würde bei 1503 unter der Safe Zone 1455 enden). Längere Sätze auf zwei Untertitel aufteilen.
   Lieber mehrere kurze Zeilen als eine lange. Kein Text über dem Gesicht.
-- Positionen wie in der PSD: nicht verschieben, nicht skalieren.
+- Positionen wie oben (PSD + 100 px, Standard ab 19.10.2026): nicht weiter verschieben, nicht skalieren.
 - Unten ein schwarzer Verlauf (ab y 1350) für die Lesbarkeit.

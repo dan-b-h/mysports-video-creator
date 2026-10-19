@@ -9,8 +9,8 @@ Vorgaben «mySports Social Media Designvorlagen» (Stand Oktober 2026):
 - Safe Zone Reels Organic: oben 252, seitlich 94, unten 465 px. Logo darf ausserhalb liegen (unten zentriert).
 - Splitscreen: zwei Clips je 1080x957, Trennlinie 6 px (y 957–963), Scorebar auf der Linie mit dem Resultat
   exakt auf x 540, Torschütze 10 px darunter. Titel (Kicker + Titel) ab x 125 / y 252.
-- Interview (PSD): Bauchbinde ab x 86 / y 952 (weiss: Club, rot: Vor- und Nachname), Untertitel ab x 86 / y 1176,
-  max. 3 Zeilen, 10 px Abstand, kein Text über dem Gesicht.
+- Interview (seit 19.10.2026 PSD + 100 px): Bauchbinde ab x 86 / y 1052 (weiss: Club, rot: Vor- und Nachname), Untertitel ab x 86 / y 1276,
+  max. 2 Zeilen, 10 px Abstand, kein Text über dem Gesicht.
 """
 from PIL import Image, ImageDraw, ImageFont
 import os
@@ -42,9 +42,9 @@ SCORE_SIZE, SCORE_TRACK, TEAM_SIZE, BAR_H = 84, -25, 54, 112
 SCORE_PADX, TEAM_PADX = 26, 26
 SCORER_SIZE, SCORER_BOX, SCORER_PADX, SCORER_GAP = 46, 69, 18, 10
 # Interview
-LOWER_X, LOWER_Y = 86, 952          # Bauchbinde
-SUB_X, SUB_Y = 86, 1176             # Untertitel
-SUB_SIZE, SUB_BOX, SUB_PADX, SUB_GAP, SUB_MAX_LINES = 44, 69, 18, 10, 3
+LOWER_X, LOWER_Y = 86, 1052         # Bauchbinde (Standard ab 19.10.2026: PSD 952 + 100 px)
+SUB_X, SUB_Y = 86, 1276             # Untertitel (Standard ab 19.10.2026: PSD 1176 + 100 px)
+SUB_SIZE, SUB_BOX, SUB_PADX, SUB_GAP, SUB_MAX_LINES = 44, 69, 18, 10, 2   # max. 2 Zeilen: Unterkante 1424, Safe Zone bis 1455
 SUB_MAXW = W - SAFE_SIDE - SUB_X    # bis an den rechten Rand der Safe Zone
 
 

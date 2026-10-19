@@ -73,7 +73,7 @@ bot = cat(gclips + [bot2], 'bottom')
 # 3) Zusammensetzen
 head = titelblock(spec.get('headline', []))
 NAME, CLUB = name_club(I.get('tag'), I.get('name'), I.get('club'))
-LOWER_Y, SUB_Y = BT.LOWER_Y, BT.SUB_Y               # Standard wie PSD (x 86 / y 952 bzw. 1176)
+LOWER_Y, SUB_Y = BT.LOWER_Y, BT.SUB_Y               # Standard seit 19.10.2026: x 86 / y 1052 bzw. 1276 (PSD + 100 px)
 if spec.get('name_on_seam'):   # rote Namensbox mittig auf der Trennlinie, Untertitel mit gleichem Abstand wie in der PSD darunter
     name_y = SEAM_MID - TITLE_BOX // 2
     LOWER_Y = name_y - (KICKER_BOX + BLOCK_GAP if CLUB else 0)

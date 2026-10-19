@@ -1,4 +1,5 @@
-"""Interview-Clip 9:16 im mySports-Design, Untertitel Wort für Wort, weiche Übergänge.
+"""Interview-Clip 9:16 (Stand 19.10.2026: Teile als einzelne Inputs = wenig Speicher; crop_xs pro Teil, auch als Ausdruck mit t, z. B. "720-180*max(0\\,1-t/3)")
+Interview-Clip 9:16 im mySports-Design, Untertitel Wort für Wort, weiche Übergänge.
 Aufruf: python3 06_Vorlage/render_interview.py spec.json ausgabe.mp4"""
 import sys, json, subprocess, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,21 +22,25 @@ def shift(t):  # Zeit ohne Überblendung -> Zeit mit Überblendung
     k = max(i for i, s in enumerate(starts) if t >= s - 1e-6)
     return round(t - k * XF, 3)
 NAME, CLUB = name_club(spec.get('tag'), spec.get('name'), spec.get('club'))
-bauchbinde(NAME, CLUB).save(f'{pngdir}/tag.png')          # PSD: ab x 86 / y 952
+bauchbinde(NAME, CLUB).save(f'{pngdir}/tag.png')          # ab x 86 / y 1052 (PSD + 100 px)
 verlauf_unten().save(f'{pngdir}/verlauf.png')
-inputs = ['-i', spec['source'], '-i', '03_Brand/mySports.png', '-i', f'{pngdir}/tag.png', '-i', f'{pngdir}/verlauf.png']
+NS = len(segs)
+inputs = []
+for s_, e_ in segs: inputs += ['-ss', f'{s_}', '-t', f'{e_-s_+0.2:.3f}', '-i', spec['source']]
+inputs += ['-i', '03_Brand/mySports.png', '-i', f'{pngdir}/tag.png', '-i', f'{pngdir}/verlauf.png']
 f = []
 for i, (s, e) in enumerate(segs):
     if spec.get('video_h'):   # herausgezoomt: Bild oben (Höhe video_h), unten unscharf verlängert -> Gesicht weiter weg vom Text
         VH = spec['video_h']; CW = round(1080 * 1080 / VH / 2) * 2
         cx = spec['crop_x'] + 304 - CW // 2
-        f.append(f"[0:v]trim={s}:{e},setpts=PTS-STARTPTS,split[fg{i}][bg{i}]")
+        f.append(f"[{i}:v]trim=0:{e-s},setpts=PTS-STARTPTS,split[fg{i}][bg{i}]")
         f.append(f"[bg{i}]crop=608:1080:{spec['crop_x']}:0,scale=1080:1920,boxblur=40:2,eq=brightness=-0.08[bb{i}]")
         f.append(f"[fg{i}]crop={CW}:1080:{cx}:0,scale=1080:{VH}[ff{i}]")
         f.append(f"[bb{i}][ff{i}]overlay=0:0,setsar=1,fps={FPS}[v{i}]")
     else:
-        f.append(f"[0:v]trim={s}:{e},setpts=PTS-STARTPTS,crop=608:1080:{spec['crop_x']}:0,scale=1080:1920,setsar=1,fps={FPS}[v{i}]")
-    f.append(f'[0:a]atrim={s}:{e},asetpts=PTS-STARTPTS[a{i}]')
+        cx_i = spec.get('crop_xs', [spec.get('crop_x')] * len(segs))[i]
+        f.append(f"[{i}:v]trim=0:{e-s},setpts=PTS-STARTPTS,crop=608:1080:x='{cx_i}':y=0,scale=1080:1920,setsar=1,fps={FPS}[v{i}]")
+    f.append(f'[{i}:a]atrim=0:{e-s},asetpts=PTS-STARTPTS[a{i}]')
 lv, la, off = 'v0', 'a0', 0.0
 for i in range(1, len(segs)):
     off += lens[i - 1] - XF
@@ -49,14 +54,14 @@ f.append(f'[{la}]afade=t=in:d=0.04,afade=t=out:st={total-FO:.3f}:d={FO},apad=pad
 if TAIL:
     f.append(f'[{lv}]tpad=stop_mode=clone:stop_duration={TAIL}[vtail]'); lv = 'vtail'
 total_out = total + TAIL
-f.append(f'[{lv}][3:v]overlay=0:0[b0]'); f.append(f'[b0][1:v]overlay=0:{LOGO_SHIFT}[b1]'); f.append('[b1][2:v]overlay=0:0[b2]')
-last, k = 'b2', 4
+f.append(f'[{lv}][{NS+2}:v]overlay=0:0[b0]'); f.append(f'[b0][{NS}:v]overlay=0:{LOGO_SHIFT}[b1]'); f.append(f'[b1][{NS+1}:v]overlay=0:0[b2]')
+last, k = 'b2', NS+3
 MIN_FULL = 0.9   # ganzer Satz mind. so lange vollständig sichtbar (s)
 HOLD = 0.6       # Untertitel bleibt nach Sprechende noch stehen, bis der nächste beginnt
 cues = spec['cues']
 report = []
 for i, c in enumerate(cues):
-    states = untertitel_zustaende(c['text'])   # PSD: ab x 86 / y 1176, schwarz, max. 3 Zeilen
+    states = untertitel_zustaende(c['text'])   # ab x 86 / y 1276 (PSD + 100 px), schwarz, max. 2 Zeilen
     wt = [shift(t) for t in c['word_t']][:len(states)]
     end = shift(c['e'])
     nxt = shift(cues[i + 1]['s']) if i + 1 < len(cues) else total + TAIL
